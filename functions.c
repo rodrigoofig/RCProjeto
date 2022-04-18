@@ -1,12 +1,11 @@
 #include "functions.h"
 
-bool getline(int l, char line[])
+bool getLine(int l, char line[])
 {
 
     int linecounter = 0;
     char ch;
     int i = 0;
-    int nusers;
     FILE *ptr;
     ptr = fopen(FILENAME, "r");
     // reading char by char
@@ -51,7 +50,7 @@ void userstruct()
     strcpy(aux.bolsa1, "vazio");
     strcpy(aux.bolsa2, "vazio");
     // buscar a segunda linha
-    getline(2, line);
+    getLine(2, line);
     int numberofusers = atoi(line);
     // loops for all users in the file
     for (int i = 3; i < 3 + numberofusers; i++)
@@ -59,7 +58,7 @@ void userstruct()
 
         int w = 0;
         line[0] = '\0';
-        getline(i, line);
+        getLine(i, line);
         int len = strlen(line);
         // saving the name in a temp var
         int param = 0;
@@ -111,9 +110,9 @@ void bolsatruct()
     char temp[50];
 
     struct bolsa aux;
-    
+
     // buscar a segunda linha
-    getline(2, line);
+    getLine(2, line);
     int numberofusers = atoi(line);
     // loops for all users in the file
     for (int i = 3 + numberofusers; i < 3 + numberofusers + 6; i++)
@@ -121,7 +120,7 @@ void bolsatruct()
 
         int w = 0;
         line[0] = '\0';
-        getline(i, line);
+        getLine(i, line);
         int len = strlen(line);
         // saving the name in a temp var
         int param = 0;
@@ -169,7 +168,7 @@ void adminstruct()
     int param = 0;
 
     // buscar a primeira linha
-    getline(1, line);
+    getLine(1, line);
     for (int i = 0; i < strlen(line) + 1; i++)
     {
         if (line[i] != '/' && line[i] != '\0')
@@ -198,8 +197,8 @@ void adminstruct()
 
 
 void listusers(int tam)
-{   
-    //loops for the users array 
+{
+    //loops for the users array
     for (int i = 0; i < tam; i++)
     {
         printf("user %d:\nname: %s\nsaldo: %d\nbolsa1: %s\nbolsa2: %s\n\n",
@@ -249,7 +248,7 @@ void addUser(char *name, char*password, char*bolsas, int saldo, int *tam){
         users[*tam] = aux;
         (*tam)++;
         printf("Utilizador adicionado com sucesso\n\n");
-    }   
+    }
 }
 
 
@@ -257,7 +256,7 @@ void deleteuser(char* name, int *tam){
     //get the position of the user to delete
     int pos = searchUser(name, *tam);
     if (pos >= 0 && pos + 1 < 10){
-        
+
         for (int i = pos; i < *tam; i++)
         {
             //shift to the left and ignore the last one
@@ -282,7 +281,7 @@ void writefile(int tam){
     {
         //se nenhuma bolsa esta assianda
         if(strcmp(users[i].bolsa1, "vazio") == 0 && strcmp(users[i].bolsa1, "vazio")==0){
-           fprintf(ptr, "%s;%s;%d\n", users[i].name, users[i].password, users[i].saldo); 
+           fprintf(ptr, "%s;%s;%d\n", users[i].name, users[i].password, users[i].saldo);
         }
         //se apenas assinou uma bolsa
         else if(strcmp(users[i].bolsa1, "vazio") != 0 && strcmp(users[i].bolsa2, "vazio")==0){
@@ -298,7 +297,12 @@ void writefile(int tam){
     {
         fprintf(ptr, "%s;%s;%1f\n", bolsas[i].mercado, bolsas[i].acao, bolsas[i].preco);
     }
-    
-    
+
+
     fclose(ptr);
 }
+
+void erro(char *s) {
+	perror(s);
+	exit(1);
+	}
