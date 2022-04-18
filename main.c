@@ -58,7 +58,7 @@ int main(){
             printf("aqui");
             tok = strtok(NULL, " \n");
             refresh = atoi(tok);
-            printf("REFRESH TIME changed to: %s seg\n", refresh);
+            printf("REFRESH TIME changed to: %d seg\n", refresh);
         }
         else if(strcmp(tok, "QUIT") == 0){
             
