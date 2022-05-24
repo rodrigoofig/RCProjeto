@@ -318,8 +318,12 @@ void process_client(int client_fd)
     
     //loop para efetuar o login e guardar as informaçoes de um user
     do {
+        strcpy(mess, "login: ");
+        write(client_fd, mess, 1 + strlen(mess));
+        memset(mess, 0 , strlen(mess));
         nread = read(client_fd, buffer, BUF_SIZE-1);
         buffer[nread] = '\0';
+        
         char * tok = strtok(buffer, " \n");
         strcpy(username, tok);
         tok = strtok(NULL," \n");
@@ -368,7 +372,7 @@ void process_client(int client_fd)
         }
     }
     //------------------------------------------------
-    char options[100] = "1 - ligar feed\n2 - desligar feed\n3 - conteudo carteira\n4 - subscrever\n5 - comprar\n6 - vender\n";
+    char options[150] = "1 - ligar feed\n2 - desligar feed\n3 - conteudo carteira\n4 - subscrever\n5 - comprar\n6 - vender\n7 - sair\n";
     char aux[50];
     
     int on = 0;
@@ -577,6 +581,10 @@ void process_client(int client_fd)
             
             
         }
+        if(strcmp(buffer, "7\n") == 0){
+            fflush(stdout);
+            close(client_fd);
+        }
         fflush(stdout);
     } while (nread>0);
     pthread_join(feed, NULL);
@@ -622,7 +630,7 @@ void porto_config(){
     
     mem->refresh = 2;
     
-    int s, recv_len, login_counter;
+    int s, recv_len;
     socklen_t slen = sizeof(si_outra);
     char buf[BUFLEN];
     

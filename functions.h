@@ -99,10 +99,11 @@ memory *mem;
 
 
 
-struct sockaddr_in si_minha, si_outra;
+struct sockaddr_in si_minha;
+struct sockaddr_in si_outra;
 struct sockaddr_in addr;
+struct sockaddr_in client_addr;
 struct hostent *hostPtr;
-struct sockaddr_in addr, client_addr;
 pid_t PORTO_CONFIG, PORTO_BOLSA;
 
 
