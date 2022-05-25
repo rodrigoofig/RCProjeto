@@ -341,6 +341,7 @@ void process_client(int client_fd)
         
         if(login == 0){
             write(client_fd, fail, 1 + strlen(fail)); 
+            sleep(1);
         }
         else{
             fflush(stdout);
@@ -358,6 +359,7 @@ void process_client(int client_fd)
     }
     for (int i = 0; i <6 ; i++)
     {
+        sleep(1);
         char info[100] = "MERCADO: ";
         char aux[50];
         if(strcmp(mem->bolsas[i].mercado, mem->users[index].bolsa1) == 0 ||strcmp( mem->bolsas[i].mercado, mem->users[index].bolsa2) == 0){
@@ -414,7 +416,7 @@ void process_client(int client_fd)
             
         }
         //ver o conteudo da carteira do user, saldo e numero de acoes as quais esta inscrito
-        if(strcmp(buffer, "3\n") == 0){
+        if(strcmp(buffer, "3") == 0){
             strcpy(mess, "--------CARTEIRA-------\n");
             strcat(mess, "SALDO: ");
             sprintf(aux, "%f", mem->users[index].saldo);
@@ -435,21 +437,22 @@ void process_client(int client_fd)
             memset(mess, 0 , strlen(mess));
             
         }
-        if(strcmp(buffer, "4\n") == 0){
-            
+        if(strcmp(buffer, "4") == 0){
+            strcpy(mess, "----acoes----\n");
             for (int i = 0; i < 6 ; i++)
             {
                 if(strcmp(mem->bolsas[i].mercado, mem->users[index].bolsa1) == 0 ||strcmp( mem->bolsas[i].mercado, mem->users[index].bolsa2) == 0){
                     
                     sprintf(aux, "%d", i + 1);
-                    strcpy(mess, aux);
+                    strcat(mess, aux);
                     strcat(mess, " - ");
                     strcat(mess, "ACAO: ");
                     strcat(mess, mem->bolsas[i].acao);
-                    strcat(mess, "\n\n");
-                    write(client_fd, mess, 1 + strlen(mess));
+                    strcat(mess, "\n");
+                    
                 }
             }
+            write(client_fd, mess, 1 + strlen(mess));
             memset(mess, 0 , strlen(mess));
 
             nread = read(client_fd, buffer, BUF_SIZE-1);
@@ -459,13 +462,16 @@ void process_client(int client_fd)
             mem->users[index].acoes[choice-1].inscrito = true;
             
         }
-        if(strcmp(buffer, "5\n") == 0){
+        if(strcmp(buffer, "5") == 0){
             char acao[50];
             float preco;
             int quantidade;
 
             //uma funcao que verifica se o user esta subscrito em alguma acao
             if(inscrito(index)){
+                strcpy(mess, "compra: ");
+                write(client_fd, mess, 1 + strlen(mess));
+                memset(mess, 0 , strlen(mess));
             //exemplo: acao preco quantidade
                 nread = read(client_fd, buffer, BUF_SIZE-1);
                 buffer[nread] = '\0';
@@ -486,8 +492,9 @@ void process_client(int client_fd)
                         if(preco * quantidade <= mem->users[index].saldo){
                             //verificar se a bolsa tem quantidade suficiente para aquilo que o user pediu
                             if(quantidade <= mem->bolsas[i].quantidade){
+                                printf("%f",preco -  mem->bolsas[i].preco );
                                 //verificar se a diferença depreço esta entre 0 e 0.02
-                                if( preco -  mem->bolsas[i].preco >= 0 || preco -  mem->bolsas[i].preco<= 0.02){
+                                if( preco -  mem->bolsas[i].preco >= 0 && preco -  mem->bolsas[i].preco<= 0.02){
                                     mem->bolsas[i].quantidade -= quantidade;
                                     mem->users[index].acoes[i].quantidade += quantidade;
                                     mem->users[index].saldo -= preco;
@@ -525,13 +532,17 @@ void process_client(int client_fd)
             
             
         }
-        if(strcmp(buffer, "6\n") == 0){
+        if(strcmp(buffer, "6") == 0){
             char acao[50];
             float preco;
             int quantidade;
-
+            
             //uma funcao que verifica se o user esta subscrito em alguma acao
+            
             if(inscrito(index) && carteira(index)){
+            strcpy(mess, "venda: ");
+            write(client_fd, mess, 1 + strlen(mess));
+            memset(mess, 0 , strlen(mess));
             //exemplo: acao preco quantidade
                 nread = read(client_fd, buffer, BUF_SIZE-1);
                 buffer[nread] = '\0';
@@ -549,7 +560,8 @@ void process_client(int client_fd)
                     //encontrar a acao que o user especificou e verificar se esta inscrito nela
                     if(strcmp(mem->users[index].acoes[i].nome , acao) == 0 && mem->users[index].acoes[i].inscrito == true){
                         if(quantidade <= mem->users[index].acoes[i].quantidade){
-                            if( mem->bolsas[i].preco - preco >= 0 || mem->bolsas[i].preco - preco <= 0.02){
+                            printf("%f", mem->bolsas[i].preco - preco);
+                            if( mem->bolsas[i].preco - preco >= 0 && mem->bolsas[i].preco - preco <= 0.02){
 
                                 mem->bolsas[i].quantidade += quantidade;
                                 mem->users[index].acoes[i].quantidade -= quantidade;
@@ -581,7 +593,7 @@ void process_client(int client_fd)
             
             
         }
-        if(strcmp(buffer, "7\n") == 0){
+        if(strcmp(buffer, "7") == 0){
             fflush(stdout);
             close(client_fd);
         }
