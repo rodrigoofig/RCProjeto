@@ -4,14 +4,18 @@ int main(int argc, char *argv[])
 {
     
     char line[10];
+
     //start shared memory
     int shmid = shmget(IPC_PRIVATE, sizeof(memory), IPC_CREAT|0700);
     mem = (memory*)shmat(shmid, NULL, 0);
+    mem->counter = 0;
     mem->tport = atoi(argv[1]);
     mem->uport = atoi(argv[2]);
     strcpy(mem->filename, argv[3]);
     //sems
     sem_init(&mem->write,1 ,1);
+    sem_init(&mem->process,1 ,1);
+    sem_init(&mem->start,1 ,1);
     
     
     // read the config.txt and create structs
@@ -25,7 +29,9 @@ int main(int argc, char *argv[])
 
     //initialize refreshtime thread
     pthread_t refresh;
+  
     pthread_create(&refresh, NULL, refreshtime, NULL);
+    
     
     PORTO_CONFIG = fork();
     if(PORTO_CONFIG == 0){
@@ -45,5 +51,6 @@ int main(int argc, char *argv[])
     }
 
     pthread_join(refresh, NULL);
+    
     return 0;
 }

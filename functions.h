@@ -15,15 +15,8 @@
 #include <netdb.h>
 #include <sys/wait.h>
 //SO librarys
-#include <stdio.h>
-#include <unistd.h>
-#include <sys/types.h>
 #include <signal.h>
-#include <unistd.h>
 #include <pthread.h>
-#include <time.h>
-#include <string.h>
-#include <stdlib.h>
 #include <fcntl.h>
 #include <error.h>
 #include <errno.h>
@@ -33,12 +26,8 @@
 #include <sys/shm.h>
 #include <ctype.h>
 #include <sys/stat.h>
-#include <sys/wait.h>
-#include <stdbool.h>
-#include <fcntl.h>
-#include <sys/stat.h>
-#include <sys/types.h>
-#include <unistd.h>
+
+
 
 //udp
 #define BUFLEN 512	// Tamanho do buffer
@@ -46,11 +35,18 @@
 //tcp
 #define SERVER_PORT 9000 // Porto para recepção das mensagens
 #define BUF_SIZE	1024 // Tamanho do buffer
+//multicast
+#define EXAMPLE_PORT 6000
+#define GROUP1 "239.0.0.1"
+#define GROUP2 "239.0.0.2"
+#define GROUP3 "239.0.0.3"
+#define GROUP4 "239.0.0.4"
+#define GROUP5 "239.0.0.5"
+#define GROUP6 "239.0.0.6"
 //--------------------------------------------------------
 #define FILENAME "config.txt"
 
 //global variables
-
 
 //structures
 typedef struct{
@@ -58,7 +54,6 @@ typedef struct{
     int quantidade;
     bool inscrito;
 }acao;
-
 
 struct user{
     char name[50];
@@ -81,19 +76,14 @@ struct bolsa{
     int quantidade;
 };
 typedef struct {
-    int logofacoisto,refresh,nusers,uport, tport;
+    int logofacoisto,refresh,nusers,uport, tport, counter;
     struct bolsa bolsas[6];
     struct user users[10];
     struct admin adm;
     char filename[30];
-    sem_t  write;
+    sem_t write;
+    sem_t process, start;
 }memory;
-
-typedef struct{
-    int fd;
-    int index;
-}inf;
-
 
 memory *mem;
 
@@ -104,6 +94,7 @@ struct sockaddr_in si_outra;
 struct sockaddr_in addr;
 struct sockaddr_in client_addr;
 struct hostent *hostPtr;
+struct ip_mreq mreq;
 pid_t PORTO_CONFIG, PORTO_BOLSA;
 
 
@@ -122,7 +113,8 @@ void process_client(int fd);
 void porto_bolsa();
 void porto_config();
 void erro(char *s);
-void * showfeed(void * arg);
+void * showfeed();
 bool inscrito(int idx);
 bool carteira(int idx);
+void * reader(void * arg);
 #endif //FUNC

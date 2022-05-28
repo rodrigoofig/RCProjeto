@@ -1,5 +1,6 @@
 #include "functions.h"
 pthread_mutex_t feedmutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t readmutex = PTHREAD_MUTEX_INITIALIZER;
 bool getLine(int l, char line[])
 {
 
@@ -357,12 +358,15 @@ void process_client(int client_fd)
         memset(mess, 0 , strlen(mess));
         close(client_fd);
     }
+    char info[150] = "----------MERCADO--------\n";
     for (int i = 0; i <6 ; i++)
-    {
+    {   
+        
         sleep(1);
-        char info[100] = "MERCADO: ";
+        
         char aux[50];
         if(strcmp(mem->bolsas[i].mercado, mem->users[index].bolsa1) == 0 ||strcmp( mem->bolsas[i].mercado, mem->users[index].bolsa2) == 0){
+            strcat(info, "MERCADO ");
             strcat(info, mem->bolsas[i].mercado);
             strcat(info, " ACAO: ");
             strcat(info, mem->bolsas[i].acao);
@@ -370,53 +374,26 @@ void process_client(int client_fd)
             strcat(info, " PRECO: ");
             strcat(info, aux);
             strcat(info, "\n");
-            write(client_fd, info, 1 + strlen(info));
+            
         }
+        
     }
+    write(client_fd, info, 1 + strlen(info));
     //------------------------------------------------
     char options[150] = "1 - ligar feed\n2 - desligar feed\n3 - conteudo carteira\n4 - subscrever\n5 - comprar\n6 - vender\n7 - sair\n";
     char aux[50];
     
-    int on = 0;
-    pthread_t feed;
-    inf threadinfo;
-    threadinfo.fd = client_fd;
-    threadinfo.index = index;
+    
     do {
         
         write(client_fd, options, 1 + strlen(options));
+
         nread = read(client_fd, buffer, BUF_SIZE-1);
         buffer[nread] = '\0';
         //ligar e desligar atualizacao de feed
         
-        if(strcmp(buffer, "1\n") == 0){
-            if(on == 0){
-                
-                pthread_create(&feed, NULL, showfeed, &threadinfo);
-            }
-            if(on == 1)
-            {
-                strcpy(mess, "feed is already on\n");
-                write(client_fd, mess, 1 + strlen(mess));
-                memset(mess, 0 , strlen(mess));
-            }
-            on= 1;
-            
-        }
-        if(strcmp(buffer, "2\n") == 0){
-            if(on == 1){
-                pthread_cancel(feed);
-            }
-            else{
-                strcpy(mess, "feed is already off\n");
-                write(client_fd, mess, 1 + strlen(mess));
-                memset(mess, 0 , strlen(mess));
-            }
-            on = 0;
-            
-        }
         //ver o conteudo da carteira do user, saldo e numero de acoes as quais esta inscrito
-        if(strcmp(buffer, "3") == 0){
+        if(strcmp(buffer, "3\n") == 0){
             strcpy(mess, "--------CARTEIRA-------\n");
             strcat(mess, "SALDO: ");
             sprintf(aux, "%f", mem->users[index].saldo);
@@ -437,7 +414,7 @@ void process_client(int client_fd)
             memset(mess, 0 , strlen(mess));
             
         }
-        if(strcmp(buffer, "4") == 0){
+        if(strcmp(buffer, "4\n") == 0){
             strcpy(mess, "----acoes----\n");
             for (int i = 0; i < 6 ; i++)
             {
@@ -460,9 +437,9 @@ void process_client(int client_fd)
             char * tok = strtok(buffer, " \n");
             int choice = atoi(tok);
             mem->users[index].acoes[choice-1].inscrito = true;
-            
+
         }
-        if(strcmp(buffer, "5") == 0){
+        if(strcmp(buffer, "5\n") == 0){
             char acao[50];
             float preco;
             int quantidade;
@@ -532,7 +509,7 @@ void process_client(int client_fd)
             
             
         }
-        if(strcmp(buffer, "6") == 0){
+        if(strcmp(buffer, "6\n") == 0){
             char acao[50];
             float preco;
             int quantidade;
@@ -590,22 +567,24 @@ void process_client(int client_fd)
                 write(client_fd, mess, 1 + strlen(mess));
                 memset(mess, 0 , strlen(mess));
             }
-            
+
             
         }
-        if(strcmp(buffer, "7") == 0){
+        if(strcmp(buffer, "7\n") == 0){
             fflush(stdout);
             close(client_fd);
         }
         fflush(stdout);
+        // sem_post(&mem->process);
     } while (nread>0);
-    pthread_join(feed, NULL);
+    
     close(client_fd);
 }
 
 void porto_bolsa(){
     int fd, client;
     int client_addr_size;
+    pthread_t feed;
     
     bzero((void *) &addr, sizeof(addr));
     addr.sin_family = AF_INET;
@@ -619,21 +598,29 @@ void porto_bolsa(){
     if( listen(fd, 5) < 0)
         erro("na funcao listen");
     client_addr_size = sizeof(client_addr);
+    pthread_create(&feed, NULL, showfeed, NULL);
     while (1) {
         //clean finished child processes, avoiding zombies
         //must use WNOHANG or would block whenever a child process was working
         while(waitpid(-1,NULL,WNOHANG)>0);
         //wait for new connection
+        
         client = accept(fd,(struct sockaddr *)&client_addr,(socklen_t *)&client_addr_size);
-        if (client > 0) {
-        if (fork() == 0) {
-            close(fd);
-            process_client(client);
-            exit(0);
-        }
+        mem->counter ++;
+        if (client > 0 && mem->counter < 5) {
+            if (fork() == 0) {
+                close(fd);
+                process_client(client);
+                exit(0);
+            }
+       
         close(client);
         }
+        else{
+            printf("NAO HA ESPACO PARA MAIS CLIENTES\n");
+        }
     }
+    pthread_join(feed, NULL);
     exit(0);
 }
 
@@ -677,26 +664,6 @@ void porto_config(){
             else{break;}
             
         }
-
-        // while(1){
-            
-        //     if ((recv_len = recvfrom(s, buf, BUFLEN, 0, (struct sockaddr *)&si_outra, (socklen_t *)&slen)) == -1)
-        //     {
-        //       erro("Erro no recvfrom");
-        //     }
-            
-        //     buf[recv_len] = '\0';
-        //     char *tok = strtok(buf, " /\n"); 
-            
-        //     if(strcmp(adm.name, tok) == 0){
-        //         printf("yey\n");
-        //     }
-        //     else{
-        //         printf("no \n");
-        //     }
-            
-        // }
-
         
 
         while (1)
@@ -845,35 +812,134 @@ void * refreshtime(){
     return NULL;
 }
 
-void * showfeed(void * arg){
+void * showfeed(){
+    int addrlen, sock, cnt;
+    char message[50] = "recebeu";
     
-    inf threadinfo = *((inf*)arg);
-
+    /* set up socket */
+    sock = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock < 0) {
+        perror("socket");
+        exit(1);
+    }
+    int multicastTTL = 255; // by default TTL=1; the packet is not transmitted to other networks
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void *) &multicastTTL, sizeof(multicastTTL)) < 0){
+        perror("socket opt");
+        exit(1);
+    }
+    bzero((char *)&addr, sizeof(addr));
+    addr.sin_family = AF_INET;
+    addr.sin_addr.s_addr = htonl(INADDR_ANY);
+    addr.sin_port = htons(EXAMPLE_PORT);
+    addrlen = sizeof(addr);
+    
     while(1){
         pthread_mutex_lock(&feedmutex);
+        char aux[50];
         sleep(mem->refresh);
-        for (int i = 0; i < 6 ; i++)
-        {
-            char info[100];
-            char aux[50];
-            if(mem->users[threadinfo.index].acoes[i].inscrito == true){
-                
-                strcpy(info, "ACAO: ");
-                strcat(info, mem->bolsas[i].acao);
-                sprintf(aux, "%f",mem->bolsas[i].preco);
-                strcat(info, " PRECO: ");
-                strcat(info, aux);
-                strcat(info, " QUANTIDADE: ");
-                sprintf(aux, "%d", mem->bolsas[i].quantidade);
-                strcat(info,aux);
-                strcat(info, "\n");
-                write(threadinfo.fd, info, 1 + strlen(info));
-            }
+        strcpy(message, "ACAO: ");
+        strcat(message, mem->bolsas[0].acao);
+        strcat(message, " PRECO: ");
+        sprintf(aux, "%f", mem->bolsas[0].preco);
+        strcat(message, aux);
+        strcat(message, "\n");
+        addr.sin_addr.s_addr = inet_addr(GROUP1);
+        cnt = sendto(sock, message, sizeof(message), 0, (struct sockaddr *) &addr, addrlen);
+        if (cnt < 0) {
+            perror("sendto");
+            exit(1);
         }
-        
+        sleep(mem->refresh);
+        strcpy(message, "ACAO: ");
+        strcat(message, mem->bolsas[1].acao);
+        strcat(message, " PRECO: ");
+        sprintf(aux, "%f", mem->bolsas[1].preco);
+        strcat(message, aux);
+        strcat(message, "\n");
+        addr.sin_addr.s_addr = inet_addr(GROUP2);
+        cnt = sendto(sock, message, sizeof(message), 0, (struct sockaddr *) &addr, addrlen);
+        if (cnt < 0) {
+            perror("sendto");
+            exit(1);
+        }
+        sleep(mem->refresh);
+        strcpy(message, "ACAO: ");
+        strcat(message, mem->bolsas[2].acao);
+        strcat(message, " PRECO: ");
+        sprintf(aux, "%f", mem->bolsas[2].preco);
+        strcat(message, aux);
+        strcat(message, "\n");
+        addr.sin_addr.s_addr = inet_addr(GROUP3);
+        cnt = sendto(sock, message, sizeof(message), 0, (struct sockaddr *) &addr, addrlen);
+        if (cnt < 0) {
+            perror("sendto");
+            exit(1);
+        }
+        sleep(mem->refresh);
+        strcpy(message, "ACAO: ");
+        strcat(message, mem->bolsas[3].acao);
+        strcat(message, " PRECO: ");
+        sprintf(aux, "%f", mem->bolsas[3].preco);
+        strcat(message, aux);
+        strcat(message, "\n");
+        addr.sin_addr.s_addr = inet_addr(GROUP4);
+        cnt = sendto(sock, message, sizeof(message), 0, (struct sockaddr *) &addr, addrlen);
+        if (cnt < 0) {
+            perror("sendto");
+            exit(1);
+        }
+        sleep(mem->refresh);
+        strcpy(message, "ACAO: ");
+        strcat(message, mem->bolsas[4].acao);
+        strcat(message, " PRECO: ");
+        sprintf(aux, "%f", mem->bolsas[4].preco);
+        strcat(message, aux);
+        strcat(message, "\n");
+        addr.sin_addr.s_addr = inet_addr(GROUP5);
+        cnt = sendto(sock, message, sizeof(message), 0, (struct sockaddr *) &addr, addrlen);
+        if (cnt < 0) {
+            perror("sendto");
+            exit(1);
+        }
+        sleep(mem->refresh);
+        strcpy(message, "ACAO: ");
+        strcat(message, mem->bolsas[5].acao);
+        strcat(message, " PRECO: ");
+        sprintf(aux, "%f", mem->bolsas[5].preco);
+        strcat(message, aux);
+        strcat(message, "\n");
+        addr.sin_addr.s_addr = inet_addr(GROUP6);
+        cnt = sendto(sock, message, sizeof(message), 0, (struct sockaddr *) &addr, addrlen);
+        if (cnt < 0) {
+            perror("sendto");
+            exit(1);
+        }
         pthread_mutex_unlock(&feedmutex);
     }
+    return NULL;
 }  
+
+void * reader(void * arg){
+    
+    while(1){
+        pthread_mutex_lock(&readmutex);
+        char message[200];
+        int addrlen;
+        int sock = *((int*)arg);
+        int cnt = recvfrom(sock, message, sizeof(message), 0,
+        (struct sockaddr *) &addr, (socklen_t *)&addrlen);
+        if (cnt < 0) {
+            perror("recvfrom");
+            exit(1);
+        } else if (cnt == 0) {
+            break;
+        }
+        printf("%s\n", message);
+        pthread_mutex_unlock(&readmutex);
+    }
+    return NULL;
+    
+}
 
 bool inscrito(int idx){
     for (int i = 0; i < 6; i++)
